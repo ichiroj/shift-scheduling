@@ -1,10 +1,13 @@
 from dwave.system import LeapHybridCQMSampler
 from dimod import quicksum, ConstrainedQuadraticModel, Binary, SampleSet
+import dimod
 
 import numpy as np
 import pandas as pd
 
 from mip_solver import MIPCQMSolver
+
+dow = ['月','火','水','木','金','土','日']
 
 options = {
     'use_cqm_solver': False,
@@ -57,7 +60,7 @@ def call_solver(cqm: ConstrainedQuadraticModel, opts: dict) -> SampleSet:
 
     res.resolve()
     feasible_sampleset = res.filter(lambda d: d.is_feasible)
-    print(feasible_sampleset)
+    #print(feasible_sampleset)
 
     try:
         best_feasible = feasible_sampleset.first.sample
@@ -68,10 +71,19 @@ def call_solver(cqm: ConstrainedQuadraticModel, opts: dict) -> SampleSet:
             "adjusting problem config."
         )
 
+def show_data(sample: dimod.SampleSet, opts: dict, vars: Variables):
+    num_workers = options['num_workers']
+    num_days = options['num_days']
+
+    wd_tbl = [[vars.wd[w,d].energy(sample) for d in range(num_days)] for w in range(num_workers)]
+    rows = [chr(ord('A') + w) for w in range(num_workers)]
+    cols = [dow[d % 7] for d in range(num_days)]
+
+    df = pd.DataFrame(data=wd_tbl, index=rows, columns=cols)
+    print(df)
+
 if __name__ == '__main__':
     vars = Variables(options)
     cqm = build_cqm(options, vars)
     best_feasible = call_solver(cqm, options)
-
-    df = pd.DataFrame(vars.wd)
-    print(df)
+    show_data(best_feasible, options, vars)
