@@ -71,7 +71,7 @@ def call_solver(cqm: ConstrainedQuadraticModel, opts: dict) -> SampleSet:
             "adjusting problem config."
         )
 
-def show_data(sample: dimod.SampleSet, opts: dict, vars: Variables):
+def make_df(sample: dimod.SampleSet, opts: dict, vars: Variables) -> pd.DataFrame:
     num_workers = options['num_workers']
     num_days = options['num_days']
 
@@ -80,10 +80,11 @@ def show_data(sample: dimod.SampleSet, opts: dict, vars: Variables):
     cols = [dow[d % 7] for d in range(num_days)]
 
     df = pd.DataFrame(data=wd_tbl, index=rows, columns=cols)
-    print(df)
+    return df
 
 if __name__ == '__main__':
     vars = Variables(options)
     cqm = build_cqm(options, vars)
     best_feasible = call_solver(cqm, options)
-    show_data(best_feasible, options, vars)
+    df = make_df(best_feasible, options, vars)
+    print(df)
