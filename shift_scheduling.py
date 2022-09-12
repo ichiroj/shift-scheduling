@@ -72,17 +72,21 @@ def call_solver(cqm: ConstrainedQuadraticModel, opts: dict) -> SampleSet:
         )
 
 def make_df(sample: dimod.SampleSet, opts: dict, vars: Variables) -> pd.DataFrame:
-    num_workers = options['num_workers']
-    num_days = options['num_days']
+    num_workers = opts['num_workers']
+    num_days = opts['num_days']
+    fst_dow = opts['fst_dow']
 
-    wd_tbl = [[vars.wd[w,d].energy(sample) for d in range(num_days)] for w in range(num_workers)]
+    wd_chr = ['休', '出']
+    wd_tbl = [[wd_chr[int(vars.wd[w,d].energy(sample))] for d in range(num_days)] for w in range(num_workers)]
     rows = [chr(ord('A') + w) for w in range(num_workers)]
-    cols = [dow[d % 7] for d in range(num_days)]
+    cols = [dow[(d + fst_dow) % 7] + str(d // 7 + 1) for d in range(num_days)]
 
     df = pd.DataFrame(data=wd_tbl, index=rows, columns=cols)
+    df = df.style.applymap(lambda v: 'background-color: red;' if v == '休' else None)
     return df
 
 if __name__ == '__main__':
+
     vars = Variables(options)
     cqm = build_cqm(options, vars)
     best_feasible = call_solver(cqm, options)
