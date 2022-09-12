@@ -4,25 +4,40 @@ import sys
 import streamlit as st
 from typing import Optional
 
-st.set_page_config(layout="wide")
+from shift_scheduling import (Variables, build_cqm, call_solver, make_df)
 
+options = {
+    'use_cqm_solver': False,
+    'time_limit': 120,
+    'num_workers': 20,
+    'num_days': 29,
+    'fst_dow': 5,
+}
+
+def solve_shift_scheduling(opts: dict):
+    vars = Variables(opts)
+    cqm = build_cqm(opts, vars)
+    best_feasible = call_solver(cqm, opts)
+    df = make_df(best_feasible, opts, vars)
+    st.dataframe(df)
+    
+st.set_page_config(layout="wide")
 st.markdown(
-    "<h1 style='text-align: center;'>3D Bin Packing Demo</h1>",
+    "<h1 style='text-align: center;'>Shift Scheduling Demo</h1>",
     unsafe_allow_html=True
 )
-
-run_type = st.sidebar.radio(label="Choose run type:",
-                            options=["Random", "File upload"])
 
 solver_type = st.sidebar.radio(label="Choose solver to run problems on:",
                                options=["Constrained Quadratic Model",
                                         "CBC (Python-MIP)",
                                         ])
-
 if solver_type == "Constrained Quadratic Model":
     use_cqm_solver = True
 else:
     use_cqm_solver = False
+
+run_type = st.sidebar.radio(label="Choose run type:",
+                            options=["Random", "File upload"])
 
     
 import pandas as pd
@@ -46,3 +61,15 @@ def make_pretty(styler):
     return styler
 
 st.dataframe(df.style.pipe(make_pretty))
+
+
+run_button = st.sidebar.button("Run")
+
+col1, col2 = st.columns([1, 2])
+with col1:
+    st.dataframe(df.style.pipe(make_pretty))
+with col2:
+    if run_button:
+        solve_shift_scheduling(options)
+
+
