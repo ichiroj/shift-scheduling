@@ -11,10 +11,12 @@ wd_chr = ['－', '〇']
 
 options = {
     'use_cqm_solver': False,
-    'time_limit': 120,
+    'time_limit': 20,
     'num_workers': 20,
     'num_days': 30,
     'fst_dow': 0,
+    'chk_consecutive': True,
+    'consecutive_days': 5,
 }
 
 class Variables:
@@ -31,9 +33,11 @@ def add_constraints(cqm: ConstrainedQuadraticModel, opts: dict, vars: Variables)
     num_days = opts['num_days']
 
     # 5日連続勤務をしたら、1日休みを割り当てる
-    for w in range(num_workers):
-        for d in range(num_days - 5):
-            cqm.add_constraint(quicksum(vars.wd[w,d + i] for i in range(6)) <= 5)
+    if opts['chk_consecutive']:
+        cons_days = opts['consecutive_days']
+        for w in range(num_workers):
+            for d in range(num_days - cons_days):
+                cqm.add_constraint(quicksum(vars.wd[w,d + i] for i in range(cons_days + 1)) <= cons_days)
 
 def define_objective(cqm: ConstrainedQuadraticModel, opts: dict, vars: Variables):
     num_workers = opts['num_workers']
@@ -78,7 +82,7 @@ def make_df(sample: SampleSet, opts: dict, vars: Variables) -> pd.DataFrame:
 
     wd_tbl = [[wd_chr[int(vars.wd[w,d].energy(sample))] for d in range(num_days)] for w in range(num_workers)]
     rows = [chr(ord('A') + w) for w in range(num_workers)]
-    cols = [dow_chr[(d + fst_dow) % 7] + str(d // 7 + 1) for d in range(num_days)]
+    cols = [str(d + 1) + ' (' + dow_chr[(d + fst_dow) % 7] + ')' for d in range(num_days)]
 
     df = pd.DataFrame(data=wd_tbl, index=rows, columns=cols)
     return df
