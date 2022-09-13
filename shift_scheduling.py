@@ -1,20 +1,20 @@
 from dwave.system import LeapHybridCQMSampler
 from dimod import quicksum, ConstrainedQuadraticModel, Binary, SampleSet
-import dimod
 
 import numpy as np
 import pandas as pd
 
 from mip_solver import MIPCQMSolver
 
-dow = ['月','火','水','木','金','土','日']
+dow_chr = ['月','火','水','木','金','土','日']
+wd_chr = ['－', '〇']
 
 options = {
     'use_cqm_solver': False,
     'time_limit': 120,
     'num_workers': 20,
-    'num_days': 29,
-    'fst_dow': 5,
+    'num_days': 30,
+    'fst_dow': 0,
 }
 
 class Variables:
@@ -71,18 +71,16 @@ def call_solver(cqm: ConstrainedQuadraticModel, opts: dict) -> SampleSet:
             "adjusting problem config."
         )
 
-def make_df(sample: dimod.SampleSet, opts: dict, vars: Variables) -> pd.DataFrame:
+def make_df(sample: SampleSet, opts: dict, vars: Variables) -> pd.DataFrame:
     num_workers = opts['num_workers']
     num_days = opts['num_days']
     fst_dow = opts['fst_dow']
 
-    wd_chr = ['休', '出']
     wd_tbl = [[wd_chr[int(vars.wd[w,d].energy(sample))] for d in range(num_days)] for w in range(num_workers)]
     rows = [chr(ord('A') + w) for w in range(num_workers)]
-    cols = [dow[(d + fst_dow) % 7] + str(d // 7 + 1) for d in range(num_days)]
+    cols = [dow_chr[(d + fst_dow) % 7] + str(d // 7 + 1) for d in range(num_days)]
 
     df = pd.DataFrame(data=wd_tbl, index=rows, columns=cols)
-    df = df.style.applymap(lambda v: 'background-color: red;' if v == '休' else None)
     return df
 
 if __name__ == '__main__':
