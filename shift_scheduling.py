@@ -15,8 +15,12 @@ options = {
     'num_workers': 20,
     'num_days': 30,
     'fst_dow': 0,
-    'chk_consecutive': True,
-    'consecutive_days': 5,
+
+    'cond01_all_chk': True,
+    'cond01_all_days': 5,
+    'cond01_sel_chk': True,
+    'cond01_sel_days': 5,
+    'cond01_sel_wrks': [],
 }
 
 class Variables:
@@ -32,12 +36,22 @@ def add_constraints(cqm: ConstrainedQuadraticModel, opts: dict, vars: Variables)
     num_workers = opts['num_workers']
     num_days = opts['num_days']
 
-    # 5日連続勤務をしたら、1日休みを割り当てる
-    if opts['chk_consecutive']:
-        cons_days = opts['consecutive_days']
+    #３～６日連続勤務で１日休み
+    if opts['cond01_all_chk']:
+        days = opts['cond01_all_days']
         for w in range(num_workers):
-            for d in range(num_days - cons_days):
-                cqm.add_constraint(quicksum(vars.wd[w,d + i] for i in range(cons_days + 1)) <= cons_days)
+            for d in range(num_days - days):
+                cqm.add_constraint(quicksum(vars.wd[w,d + i] for i in range(days + 1)) <= days)
+
+    if opts['cond01_sel_chk']:
+        days = opts['cond01_sel_days']
+        for w in range(num_workers):
+            if chr(ord('A')+w) in opts['cond01_sel_wrks']:
+                for d in range(num_days - days):
+                    cqm.add_constraint(quicksum(vars.wd[w,d + i] for i in range(days + 1)) <= days)
+
+
+
 
 def define_objective(cqm: ConstrainedQuadraticModel, opts: dict, vars: Variables):
     num_workers = opts['num_workers']
