@@ -85,6 +85,9 @@ class Variables:
         self.wd = {(w, d): Binary(f'worker_{w}_day_{d}') for w in range(num_workers) for d in range(num_days)}
         if opts['cond02_all_chk'] or opts['cond02_sel_chk']:
             self.wwe = {(w, we): Binary(f'worker_{w}_weekend_{we}') for w in range(num_workers) for we in range(4)}
+        if opts['cond11_chk']:
+            self.dww = {(d, w1, w2): Binary(f'day_{d}_worker1_{w1}_weekend2_{w2}')
+                for d in range(num_days) for w1 in range(num_workers) for w2 in range(num_workers)}
 
 def add_constraints(cqm: ConstrainedQuadraticModel, opts: dict, vars: Variables):
     num_workers = opts['num_workers']
@@ -180,9 +183,12 @@ def add_constraints(cqm: ConstrainedQuadraticModel, opts: dict, vars: Variables)
     
     # 11. 一緒に勤務させない
     if opts['cond11_chk']:
-        pass
-
-
+        for d in range(num_days):
+            for grp_chr in [opts['cond11_wrks_A'], opts['cond11_wrks_B'], opts['cond11_wrks_C']]:
+                grp_num = list(map(lambda x: wrk_chr.index(x), grp_chr))
+                for cmb in itertools.combinations(grp_num, 2):
+                    cqm.add_constraint(2 * vars.dww[d,cmb[0],cmb[1]] - vars.wd[cmb[0],d] - (1 - vars.wd[cmb[1],d]) <= 0)  
+                    cqm.add_constraint(2 * (1 - vars.dww[d,cmb[0],cmb[1]]) - (1 - vars.wd[cmb[0],d]) - vars.wd[cmb[1],d] <= 0)  
 
 def define_objective(cqm: ConstrainedQuadraticModel, opts: dict, vars: Variables):
     num_workers = opts['num_workers']
