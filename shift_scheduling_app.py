@@ -4,7 +4,7 @@ import sys
 import streamlit as st
 from typing import Optional
 
-from shift_scheduling import (Variables, build_cqm, call_solver, make_df, dow_chr, wd_chr)
+from shift_scheduling import (Variables, build_cqm, call_solver, make_df, dow_chr, wd_chr, options)
 
 def solve_shift_scheduling(opts: dict):
     vars = Variables(opts)
@@ -17,15 +17,27 @@ def solve_shift_scheduling(opts: dict):
     
 st.set_page_config(layout="wide")
 st.markdown(
-    "<h1 style='text-align: center;'>シフトスケジュール　デモ</h1>",
+    "<h1 style='text-align: center;'>シフトスケジュール　テスト</h1>",
     unsafe_allow_html=True
 )
 
 with st.expander("【 条件の種類 】"):
     st.markdown(
         """
+        #### 休日
         1. ３～６日連続勤務で１日休み（全員／個別）
-        2. 
+        2. 土日連休を月１～４回以上割当（全員／個別）
+        3. 土日を休みにする（全員／個別）
+        4. 休みを月４～１０回割り当てる（全員／個別）
+        5. 休→出→休の飛び石連休はなし
+        6. 休みを週に１～６回以上割当（全員／個別）
+        #### 出勤
+        7. １日の出勤人数はＸ人以上（平日／土日）
+        8. 月の出勤日数は４～２４日以上（全員／個別）
+        9. 週の出勤日数は１～６日以上（全員／個別）
+        #### 組合せ
+        10. 一緒に勤務させる
+        11. 一緒に勤務させない
         """
     )
 
@@ -48,22 +60,83 @@ with st.sidebar.expander("【 基本設定 】"):
     fst_dow_chr = st.selectbox("開始曜日：", dow_chr)
 
 with st.sidebar.expander("【 ３～６日連続勤務で１日休み 】"):
-    cond01_all_chk = st.checkbox("全員")
-    cond01_all_days = st.slider("連続勤務日数（全員）：", min_value=3, max_value=6, value=5)
+    cond01_all_chk = st.checkbox("全員", key="cond01_all_chk")
+    cond01_all_days = st.slider("連続勤務日数（全員）：", min_value=3, max_value=6, value=5, key="cond01_all_days")
     st.markdown("<hr/>", unsafe_allow_html=True)
-    cond01_sel_chk = st.checkbox("個別")
-    cond01_sel_days = st.slider("連続勤務日数（個別）：", min_value=3, max_value=6, value=5)
-    cond01_sel_wrks = st.multiselect("対象者選択：",  workers_list)
+    cond01_sel_chk = st.checkbox("個別", key="cond01_sel_chk")
+    cond01_sel_days = st.slider("連続勤務日数（個別）：", min_value=3, max_value=6, value=5, key="cond01_sel_days")
+    cond01_sel_wrks = st.multiselect("対象者選択：",  workers_list, key="cond01_sel_wrks")
 
+with st.sidebar.expander("【 土日連休を月１～４回以上割当 】"):
+    cond02_all_chk = st.checkbox("全員", key="cond02_all_chk")
+    cond02_all_cnt = st.slider("回数（全員）：", min_value=1, max_value=4, value=1, key="cond02_all_cnt")
+    st.markdown("<hr/>", unsafe_allow_html=True)
+    cond02_sel_chk = st.checkbox("個別", key="cond02_sel_chk")
+    cond02_sel_cnt = st.slider("回数（個別）：", min_value=1, max_value=4, value=1, key="cond02_sel_cnt")
+    cond02_sel_wrks = st.multiselect("対象者選択：",  workers_list, key="cond02_sel_wrks")
 
+with st.sidebar.expander("【 土日を休みにする 】"):
+    cond03_all_chk = st.checkbox("全員", key="cond03_all_chk")
+    cond03_sel_chk = st.checkbox("個別", key="cond03_sel_chk")
+    cond03_sel_wrks = st.multiselect("対象者選択：",  workers_list, key="cond03_sel_wrks")
+
+with st.sidebar.expander("【 休みを月４～１０回割り当てる 】"):
+    cond04_all_chk = st.checkbox("全員", key="cond04_all_chk")
+    cond04_all_cnt = st.slider("回数（全員）：", min_value=4, max_value=10, value=8, key="cond04_all_cnt")
+    st.markdown("<hr/>", unsafe_allow_html=True)
+    cond04_sel_chk = st.checkbox("個別", key="cond04_sel_chk")
+    cond04_sel_cnt = st.slider("回数（個別）：", min_value=4, max_value=10, value=8, key="cond04_sel_cnt")
+    cond04_sel_wrks = st.multiselect("対象者選択：",  workers_list, key="cond04_sel_wrks")
+
+with st.sidebar.expander("【 休→出→休の飛び石連休はなし 】"):
+    cond05_chk = st.checkbox("飛び石連休はなし", key="cond05_chk")
+
+with st.sidebar.expander("【 休みを週に１～６回以上割当 】"):
+    cond06_all_chk = st.checkbox("全員", key="cond06_all_chk")
+    cond06_all_days = st.slider("日数（全員）：", min_value=3, max_value=6, value=5, key="cond06_all_days")
+    st.markdown("<hr/>", unsafe_allow_html=True)
+    cond06_sel_chk = st.checkbox("個別", key="cond06_sel_chk")
+    cond06_sel_days = st.slider("日数（個別）：", min_value=3, max_value=6, value=5, key="cond06_sel_days")
+    cond06_sel_wrks = st.multiselect("対象者選択：",  workers_list, key="cond06_sel_wrks")
+
+with st.sidebar.expander("【 １日の出勤人数はＸ人以上 】"):
+    cond07_wrk_chk = st.checkbox("平日", key="cond07_wrk_chk")
+    cond07_wrk_cnt = st.slider("人数（平日）：", min_value=1, max_value=workers_range, value=workers_range-4, key="cond07_wrk_cnt")
+    st.markdown("<hr/>", unsafe_allow_html=True)
+    cond07_hol_chk = st.checkbox("土日", key="cond07_hol_chk")
+    cond07_hol_cnt = st.slider("人数（土日）：", min_value=1, max_value=workers_range, value=workers_range-4, key="cond07_hol_cnt")
+
+with st.sidebar.expander("【 月の出勤日数は４～２４日以上 】"):
+    cond08_all_chk = st.checkbox("全員", key="cond08_all_chk")
+    cond08_all_days = st.slider("出勤日数（全員）：", min_value=4, max_value=24, value=20, key="cond08_all_days")
+    st.markdown("<hr/>", unsafe_allow_html=True)
+    cond08_sel_chk = st.checkbox("個別", key="cond08_sel_chk")
+    cond08_sel_days = st.slider("出勤日数（個別）：", min_value=4, max_value=24, value=20, key="cond08_sel_days")
+    cond08_sel_wrks = st.multiselect("対象者選択：",  workers_list, key="cond08_sel_wrks")
+
+with st.sidebar.expander("【 週の出勤日数は１～６日以上 】"):
+    cond09_all_chk = st.checkbox("全員", key="cond09_all_chk")
+    cond09_all_days = st.slider("出勤日数（全員）：", min_value=1, max_value=6, value=5, key="cond09_all_days")
+    st.markdown("<hr/>", unsafe_allow_html=True)
+    cond09_sel_chk = st.checkbox("個別", key="cond09_sel_chk")
+    cond09_sel_days = st.slider("出勤日数（個別）：", min_value=1, max_value=6, value=5, key="cond09_sel_days")
+    cond09_sel_wrks = st.multiselect("対象者選択：",  workers_list, key="cond09_sel_wrks")
+
+with st.sidebar.expander("【 一緒に勤務させる 】"):
+    cond10_chk = st.checkbox("一緒に勤務させる", key="cond10_chk")
+    cond10_wrks_A = st.multiselect("一緒に勤務するグループA：",  workers_list, key="cond10_wrks_A")
+    cond10_wrks_B = st.multiselect("一緒に勤務するグループB：",  workers_list, key="cond10_wrks_B")
+    cond10_wrks_C = st.multiselect("一緒に勤務するグループC：",  workers_list, key="cond10_wrks_C")
+
+with st.sidebar.expander("【 一緒に勤務させない 】"):
+    cond11_chk = st.checkbox("一緒に勤務させない", key="cond11_chk")
+    cond11_wrks_A = st.multiselect("一緒に勤務させないグループA：",  workers_list, key="cond11_wrks_A")
+    cond11_wrks_B = st.multiselect("一緒に勤務させないグループB：",  workers_list, key="cond11_wrks_B")
+    cond11_wrks_C = st.multiselect("一緒に勤務させないグループC：",  workers_list, key="cond11_wrks_C")
 
 run_button = st.sidebar.button("Run")
 
 if run_button:
-
-    options = {
-        'time_limit': 120,
-    }
 
     options['use_cqm_solver'] = use_cqm_solver
     options['time_limit'] = time_limit
@@ -72,10 +145,9 @@ if run_button:
     options['num_days'] = days_range
     options['fst_dow'] = dow_chr.index(fst_dow_chr)
 
-    options['cond01_all_chk'] = cond01_all_chk
-    options['cond01_all_days'] = cond01_all_days
-    options['cond01_sel_chk'] = cond01_sel_chk
-    options['cond01_sel_days'] = cond01_sel_days
-    options['cond01_sel_wrks'] = cond01_sel_wrks
+    g_dict = globals()
+    for k in options.keys():
+        if 'cond' in k:
+            options[k] = g_dict[k]
 
     solve_shift_scheduling(options)
