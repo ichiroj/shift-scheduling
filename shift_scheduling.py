@@ -7,17 +7,22 @@ import itertools
 
 from mip_solver import MIPCQMSolver
 
+# ワーカー文字リスト（A～Z）
 wrk_chr = [chr(ord('A')+w) for w in range(26)]
+
+# 曜日文字リスト（月～日）
 dow_chr = ['月','火','水','木','金','土','日']
+
+# 休出文字リスト
 wd_chr = ['－', '〇']
 
 options = {
-    'use_cqm_solver': False,
-    'time_limit': 20,
-    'num_workers': 20,
-    'num_days': 30,
-    'fst_dow': 0,
-    'obj_sign': -1,
+    'use_cqm_solver': False,    # 量子コンピュータ (LeapHybridCQMSampler)を True:使う False:使わない
+    'time_limit': 20,           # 処理時間制限（秒）
+    'num_workers': 20,          # ワーカーの人数
+    'num_days': 30,             # ひと月の日数
+    'fst_dow': 0,               # 月の最初の曜日（0:月 1:火 ・・・）
+    'obj_sign': -1,             # 目的関数 -1:出勤をできるだけ多くする +1:休日をできるだけ多くする
 
     # 1. ３～６日連続勤務で１日休み（全員／個別）
     'cond01_all_chk': False,
@@ -103,11 +108,22 @@ class Variables:
         num_workers = opts['num_workers']
         num_days = opts['num_days']
 
+        # バイナリ変数
+        # wd=1のとき、ワーカーwが日dに出勤 
+        # wd=0のとき、ワーカーwが日dに休み 
         self.wd = {(w, d): Binary(f'worker_{w}_day_{d}') for w in range(num_workers) for d in range(num_days)}
+
+        # 2. 土日連休を月１～４回以上割り当てる で使用するバイナリ変数
+        # wwe=1のとき、ワーカーwのwe回目の土日が連休
+        # wwe=0のとき、ワーカーwのwe回目の土日が連休ではない（土または日が休みの場合も含む）
         if opts['cond02_all_chk'] or opts['cond02_sel_chk']:
             self.wwe = {(w, we): Binary(f'worker_{w}_weekend_{we}') for w in range(num_workers) for we in range(4)}
+        
+        # 11. 一緒に勤務させない で使用するバイナリ変数 
+        # dww=1のとき、ワーカー1は出、かつ、ワーカー2は休
+        # dww=0のとき、ワーカー1は休、かつ、ワーカー2は出
         #if opts['cond11_chk']:
-        #    self.dww = {(d, w1, w2): Binary(f'day_{d}_worker1_{w1}_weekend2_{w2}')
+        #    self.dww = {(d, w1, w2): Binary(f'day_{d}_worker1_{w1}_worker2_{w2}')
         #        for d in range(num_days) for w1 in range(num_workers) for w2 in range(num_workers)}
 
 def add_constraints(cqm: ConstrainedQuadraticModel, opts: dict, vars: Variables):
@@ -137,6 +153,8 @@ def add_constraints(cqm: ConstrainedQuadraticModel, opts: dict, vars: Variables)
         else:
             continue
 
+        # wwe=1のとき、ワーカーwのwe回目の土日が連休
+        # wwe=0のとき、ワーカーwのwe回目の土日が連休ではない（土または日が休みの場合も含む）
         for we in range(4):
             cqm.add_constraint(2 * vars.wwe[w, we]  - (1 - vars.wd[w, we * 7 + fst_sat]) - (1 - vars.wd[w, we * 7 + fst_sat + 1]) <= 0)
             cqm.add_constraint((1 - vars.wwe[w, we]) - vars.wd[w, we * 7 + fst_sat] - vars.wd[w, we * 7 + fst_sat + 1] <= 0)
@@ -208,8 +226,12 @@ def add_constraints(cqm: ConstrainedQuadraticModel, opts: dict, vars: Variables)
             for grp_chr in [opts['cond11_wrks_A'], opts['cond11_wrks_B'], opts['cond11_wrks_C']]:
                 grp_num = list(map(lambda x: wrk_chr.index(x), grp_chr))
                 for cmb in itertools.combinations(grp_num, 2):
+                    # dww=1のとき、ワーカー1は出、かつ、ワーカー2は休
+                    # dww=0のとき、ワーカー1は休、かつ、ワーカー2は出
                     #cqm.add_constraint(2 * vars.dww[d,cmb[0],cmb[1]] - vars.wd[cmb[0],d] - (1 - vars.wd[cmb[1],d]) <= 0)  
                     #cqm.add_constraint(2 * (1 - vars.dww[d,cmb[0],cmb[1]]) - (1 - vars.wd[cmb[0],d]) - vars.wd[cmb[1],d] <= 0) 
+                    
+                    # ワーカー1とワーカー2がどちらも休み を可能に
                     cqm.add_constraint(vars.wd[cmb[0],d] + vars.wd[cmb[1],d] - 1 <= 0) 
 
     # 12. 特定の日を休みにする（個別）
