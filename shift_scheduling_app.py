@@ -38,6 +38,9 @@ with st.expander("【 条件の種類 】"):
         #### 組合せ
         10. 一緒に勤務させる
         11. 一緒に勤務させない
+        #### 日・曜日指定
+        12. 特定の日を休みにする（個別）
+        13. 特定の曜日を休みにする（個別）
         """
     )
 
@@ -58,6 +61,8 @@ with st.sidebar.expander("【 基本設定 】"):
     workers_list = [chr(ord('A') + w) for w in range(workers_range)]
     days_range = st.slider("日数：", min_value=28, max_value=31, value=30)
     fst_dow_chr = st.selectbox("開始曜日：", dow_chr)
+    obj_sign = st.radio(label="できるだけ多くする：",
+                                options=["出勤を", "休みを"])
 
 with st.sidebar.expander("【 ３～６日連続勤務で１日休み 】"):
     cond01_all_chk = st.checkbox("全員", key="cond01_all_chk")
@@ -93,10 +98,10 @@ with st.sidebar.expander("【 休→出→休の飛び石連休はなし 】"):
 
 with st.sidebar.expander("【 休みを週に１～６回以上割当 】"):
     cond06_all_chk = st.checkbox("全員", key="cond06_all_chk")
-    cond06_all_days = st.slider("日数（全員）：", min_value=3, max_value=6, value=5, key="cond06_all_days")
+    cond06_all_days = st.slider("日数（全員）：", min_value=1, max_value=6, value=2, key="cond06_all_days")
     st.markdown("<hr/>", unsafe_allow_html=True)
     cond06_sel_chk = st.checkbox("個別", key="cond06_sel_chk")
-    cond06_sel_days = st.slider("日数（個別）：", min_value=3, max_value=6, value=5, key="cond06_sel_days")
+    cond06_sel_days = st.slider("日数（個別）：", min_value=1, max_value=6, value=2, key="cond06_sel_days")
     cond06_sel_wrks = st.multiselect("対象者選択：",  workers_list, key="cond06_sel_wrks")
 
 with st.sidebar.expander("【 １日の出勤人数はＸ人以上 】"):
@@ -134,6 +139,16 @@ with st.sidebar.expander("【 一緒に勤務させない 】"):
     cond11_wrks_B = st.multiselect("一緒に勤務させないグループB：",  workers_list, key="cond11_wrks_B")
     cond11_wrks_C = st.multiselect("一緒に勤務させないグループC：",  workers_list, key="cond11_wrks_C")
 
+with st.sidebar.expander("【 特定の日を休みにする 】"):
+    cond12_chk = st.checkbox("特定の日を休みにする", key="cond12_chk")
+    cond12_days = st.multiselect("日選択：", [d+1 for d in range(days_range)], key="cond12_days")
+    cond12_wrks = st.multiselect("対象者選択：",  workers_list, key="cond12_wrks")
+
+with st.sidebar.expander("【 特定の曜日を休みにする 】"):
+    cond13_chk = st.checkbox("特定の曜日を休みにする", key="cond13_chk")
+    cond13_dows = st.multiselect("曜日選択：", dow_chr, key="cond13_dows")
+    cond13_wrks = st.multiselect("対象者選択：",  workers_list, key="cond13_wrks")
+
 run_button = st.sidebar.button("Run")
 
 if run_button:
@@ -144,6 +159,10 @@ if run_button:
     options['num_workers'] = workers_range
     options['num_days'] = days_range
     options['fst_dow'] = dow_chr.index(fst_dow_chr)
+    if obj_sign == '出勤を':
+        options['obj_sign'] = -1
+    else:
+        options['obj_sign'] = +1
 
     g_dict = globals()
     for k in options.keys():
